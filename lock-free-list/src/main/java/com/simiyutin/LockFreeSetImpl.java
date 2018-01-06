@@ -56,6 +56,7 @@ public class LockFreeSetImpl<T extends Comparable<T>> implements LockFreeSet<T> 
             }
             boolean[] nodeMarked = {false};
             rightNext = neighbours.right.nextRef.get(nodeMarked);
+            
             if (tryMark(neighbours.right, rightNext, nodeMarked)) {
                 break;
             }

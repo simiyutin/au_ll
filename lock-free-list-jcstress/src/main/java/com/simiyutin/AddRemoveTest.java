@@ -32,19 +32,15 @@ package com.simiyutin;
 
 import org.openjdk.jcstress.annotations.*;
 import org.openjdk.jcstress.infra.results.BooleanResult2;
-import org.openjdk.jcstress.infra.results.IntResult2;
-
-// See jcstress-samples or existing tests for API introduction and testing guidelines
 
 @JCStressTest
-// Outline the outcomes here. The default outcome is provided, you need to remove it:
 @Outcome(id = "false, true", expect = Expect.ACCEPTABLE, desc = "Default outcome.")
 @State
-public class ConcurrencyTest {
+public class AddRemoveTest {
 
     private final LockFreeSet<Integer> set;
 
-    public ConcurrencyTest() {
+    public AddRemoveTest() {
         set = new LockFreeSetImpl<>();
         set.add(10);
         set.add(20);
