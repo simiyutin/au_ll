@@ -139,7 +139,7 @@ public class LockFreeSetImpl<T extends Comparable<T>> implements LockFreeSet<T> 
         return result;
     }
 
-    
+
     private static class Node<T> {
 
         T key;
