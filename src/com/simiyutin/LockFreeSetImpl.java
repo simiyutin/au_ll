@@ -18,13 +18,13 @@ public class LockFreeSetImpl<T extends Comparable<T>> implements LockFreeSet<T> 
         newNode.key = value;
         while (true) {
             Neighbours<T> neighbours = searchNeighbours(new KeyHolder<>(value));
-            if (neighbours.rightNeighbour != tail && neighbours.rightNeighbour.key.compareTo(value) == 0) {
+            if (neighbours.right != tail && neighbours.right.key.compareTo(value) == 0) {
                 return false;
             }
 
-            newNode.nextRef = new AtomicMarkableReference<>(neighbours.rightNeighbour, false);
+            newNode.nextRef = new AtomicMarkableReference<>(neighbours.right, false);
 
-            if (neighbours.leftNeighbour.nextRef.compareAndSet(neighbours.rightNeighbour, newNode, false, false)) {
+            if (neighbours.left.nextRef.compareAndSet(neighbours.right, newNode, false, false)) {
                 return true;
             }
         }
@@ -37,30 +37,30 @@ public class LockFreeSetImpl<T extends Comparable<T>> implements LockFreeSet<T> 
 
     @Override
     public boolean contains(T value) {
-        NeighboursCandidates<T> neighbours = findNeighboursCandidates(new KeyHolder<>(value));
-        return neighbours.rightNeighbourCandidate != tail && neighbours.rightNeighbourCandidate.key.compareTo(value) == 0;
+        NeighboursCandidates<T> neighborCandidates = findNeighboursCandidates(new KeyHolder<>(value));
+        return neighborCandidates.right != tail && neighborCandidates.right.key.compareTo(value) == 0;
     }
 
     @Override
     public boolean isEmpty() {
         Neighbours<T> neighbours = searchNeighbours(null);
-        return neighbours.leftNeighbour == head && neighbours.rightNeighbour == tail;
+        return neighbours.left == head && neighbours.right == tail;
     }
 
     private Neighbours<T> searchNeighbours(KeyHolder<T> keyHolder) {
         while (true) {
-            NeighboursCandidates<T> candidates = findNeighboursCandidates(keyHolder);
-            Node<T> left = candidates.leftNeighbourCandidate;
-            Node<T> leftNext = candidates.leftNeighbourCandidateNext;
-            Node<T> right = candidates.rightNeighbourCandidate;
+            NeighboursCandidates<T> neighborCandidates = findNeighboursCandidates(keyHolder);
+            Node<T> left = neighborCandidates.left;
+            Node<T> leftNext = neighborCandidates.leftNext;
+            Node<T> right = neighborCandidates.right;
 
             boolean adjacent = leftNext == right && !right.isDeleted();
             if (adjacent) {
                 return new Neighbours<>(left, right);
             }
 
-            boolean removedDeletedNodes = leftNext != right && left.nextRef.compareAndSet(leftNext, right, false, false);
-            if (removedDeletedNodes && !right.isDeleted()) {
+            boolean removedMarkedNodes = leftNext != right && left.nextRef.compareAndSet(leftNext, right, false, false);
+            if (removedMarkedNodes && !right.isDeleted()) {
                 return new Neighbours<>(left, right);
             }
         }
@@ -75,8 +75,8 @@ public class LockFreeSetImpl<T extends Comparable<T>> implements LockFreeSet<T> 
 
         do {
             if (!curNodeNextMarked[0]) { //head.next will never be marked
-                result.leftNeighbourCandidate = curNode;
-                result.leftNeighbourCandidateNext = curNodeNext;
+                result.left = curNode;
+                result.leftNext = curNodeNext;
             }
 
             curNode = curNodeNext;
@@ -85,7 +85,7 @@ public class LockFreeSetImpl<T extends Comparable<T>> implements LockFreeSet<T> 
             }
             curNodeNext = curNode.nextRef.get(curNodeNextMarked);
         } while (curNodeNextMarked[0] || keyHolder == null || curNode.key.compareTo(keyHolder.key) < 0);
-        result.rightNeighbourCandidate = curNode;
+        result.right = curNode;
         return result;
     }
 
@@ -100,19 +100,19 @@ public class LockFreeSetImpl<T extends Comparable<T>> implements LockFreeSet<T> 
     }
 
     private static class Neighbours<T> {
-        Node<T> leftNeighbour;
-        Node<T> rightNeighbour;
+        final Node<T> left;
+        final Node<T> right;
 
-        Neighbours(Node<T> leftNeighbour, Node<T> rightNeighbour) {
-            this.leftNeighbour = leftNeighbour;
-            this.rightNeighbour = rightNeighbour;
+        Neighbours(Node<T> left, Node<T> right) {
+            this.left = left;
+            this.right = right;
         }
     }
 
     private static class NeighboursCandidates<T> {
-        Node<T> leftNeighbourCandidate;
-        Node<T> leftNeighbourCandidateNext;
-        Node<T> rightNeighbourCandidate;
+        Node<T> left;
+        Node<T> leftNext;
+        Node<T> right;
     }
 
     private static class KeyHolder<T> {
