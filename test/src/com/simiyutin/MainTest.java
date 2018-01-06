@@ -14,5 +14,9 @@ public class MainTest {
         assertFalse(set.isEmpty());
         assertTrue(set.contains(1));
         assertFalse(set.add(1));
+        assertTrue(set.remove(1));
+        assertFalse(set.remove(1));
+        assertTrue(set.isEmpty());
+        assertFalse(set.contains(1));
     }
 }

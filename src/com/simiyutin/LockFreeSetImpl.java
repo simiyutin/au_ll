@@ -32,7 +32,33 @@ public class LockFreeSetImpl<T extends Comparable<T>> implements LockFreeSet<T> 
 
     @Override
     public boolean remove(T value) {
-        throw new UnsupportedOperationException();
+        Neighbours<T> neighbours;
+        Node<T> rightNext;
+        while (true) {
+            neighbours = searchNeighbours(new KeyHolder<>(value));
+            if (neighbours.right == tail || neighbours.right.key.compareTo(value) != 0) {
+                return false;
+            }
+            boolean[] nodeMarked = {false};
+            rightNext = neighbours.right.nextRef.get(nodeMarked);
+            if (tryMark(neighbours.right, rightNext, nodeMarked)) {
+                break;
+            }
+        }
+
+        removeMarked(neighbours, rightNext);
+
+        return true;
+    }
+
+    private void removeMarked(Neighbours<T> neighbours, Node<T> rightNext) {
+        if (!neighbours.left.nextRef.compareAndSet(neighbours.right, rightNext, false, false)) {
+            searchNeighbours(new KeyHolder<>(neighbours.right.key));
+        }
+    }
+
+    private boolean tryMark(Node<T> node, Node<T> nodeNext, boolean[] nodeMarked) {
+        return !nodeMarked[0] && node.nextRef.compareAndSet(nodeNext, nodeNext, false, true);
     }
 
     @Override
@@ -54,12 +80,13 @@ public class LockFreeSetImpl<T extends Comparable<T>> implements LockFreeSet<T> 
             Node<T> leftNext = neighborCandidates.leftNext;
             Node<T> right = neighborCandidates.right;
 
-            boolean adjacent = leftNext == right && !right.isDeleted();
+            // todo а что с left.deleted ?
+            boolean adjacent = (leftNext == right && !right.isDeleted());
             if (adjacent) {
                 return new Neighbours<>(left, right);
             }
 
-            boolean removedMarkedNodes = leftNext != right && left.nextRef.compareAndSet(leftNext, right, false, false);
+            boolean removedMarkedNodes = (leftNext != right && left.nextRef.compareAndSet(leftNext, right, false, false));
             if (removedMarkedNodes && !right.isDeleted()) {
                 return new Neighbours<>(left, right);
             }
@@ -70,21 +97,22 @@ public class LockFreeSetImpl<T extends Comparable<T>> implements LockFreeSet<T> 
     private NeighboursCandidates<T> findNeighboursCandidates(KeyHolder<T> keyHolder) {
         NeighboursCandidates<T> result = new NeighboursCandidates<>();
         Node<T> curNode = head;
-        boolean[] curNodeNextMarked = {false};
-        Node<T> curNodeNext = curNode.nextRef.get(curNodeNextMarked);
+        boolean[] curNodeMarked = {false};
+        Node<T> nextNode = curNode.nextRef.get(curNodeMarked);
 
         do {
-            if (!curNodeNextMarked[0]) { //head.next will never be marked
+            if (!curNodeMarked[0]) { //head.next will never be marked
                 result.left = curNode;
-                result.leftNext = curNodeNext;
+                result.leftNext = nextNode;
             }
 
-            curNode = curNodeNext;
+            curNode = nextNode;
             if (curNode == tail) {
                 break;
             }
-            curNodeNext = curNode.nextRef.get(curNodeNextMarked);
-        } while (curNodeNextMarked[0] || keyHolder == null || curNode.key.compareTo(keyHolder.key) < 0);
+            nextNode = curNode.nextRef.get(curNodeMarked);
+        } while (curNodeMarked[0] || keyHolder == null || curNode.key.compareTo(keyHolder.key) < 0);
+
         result.right = curNode;
         return result;
     }
