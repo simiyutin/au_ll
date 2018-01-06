@@ -17,7 +17,7 @@ public class LockFreeSetImpl<T extends Comparable<T>> implements LockFreeSet<T> 
         Node<T> newNode = new Node<>();
         newNode.key = key;
         while (true) {
-            Neighbours<T> neighbours = search(key);
+            Neighbours<T> neighbours = searchNeighbours(key);
             if (neighbours.rightNeighbour != tail && neighbours.rightNeighbour.key.compareTo(key) == 0) {
                 return false;
             }
@@ -37,7 +37,8 @@ public class LockFreeSetImpl<T extends Comparable<T>> implements LockFreeSet<T> 
 
     @Override
     public boolean contains(T value) {
-        return false;
+        NeighboursCandidates<T> neighbours = findNeighboursCandidates(value);
+        return neighbours.rightNeighbourCandidate != tail && neighbours.rightNeighbourCandidate.key.compareTo(value) == 0;
     }
 
     @Override
@@ -45,9 +46,9 @@ public class LockFreeSetImpl<T extends Comparable<T>> implements LockFreeSet<T> 
         return false;
     }
 
-    private Neighbours<T> search(T key) {
+    private Neighbours<T> searchNeighbours(T key) {
         while (true) {
-            NeighboursCandidates<T> candidates = findCandidatesNeighbours(key);
+            NeighboursCandidates<T> candidates = findNeighboursCandidates(key);
             Node<T> left = candidates.leftNeighbourCandidate;
             Node<T> leftNext = candidates.leftNeighbourCandidateNext;
             Node<T> right = candidates.rightNeighbourCandidate;
@@ -65,7 +66,7 @@ public class LockFreeSetImpl<T extends Comparable<T>> implements LockFreeSet<T> 
     }
 
     // rightCandidate - это первая нода с node.key >= key
-    private NeighboursCandidates<T> findCandidatesNeighbours(T key) {
+    private NeighboursCandidates<T> findNeighboursCandidates(T key) {
         NeighboursCandidates<T> result = new NeighboursCandidates<>();
         Node<T> curNode = head;
         boolean[] curNodeNextMarked = {false};
