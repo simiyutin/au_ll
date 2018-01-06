@@ -1,10 +1,16 @@
 package com.simiyutin;
 
+
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicMarkableReference;
 
 public class LockFreeSetImpl<T extends Comparable<T>> implements LockFreeSet<T> {
+
     private final Node<T> head;
+
     private final Node<T> tail;
+
+    private final AtomicBoolean containsNull = new AtomicBoolean(false);
 
     public LockFreeSetImpl() {
         head = new Node<>();
@@ -14,6 +20,11 @@ public class LockFreeSetImpl<T extends Comparable<T>> implements LockFreeSet<T> 
 
     @Override
     public boolean add(T value) {
+        if (value == null) {
+            return containsNull.compareAndSet(false, true);
+        }
+
+
         Node<T> newNode = new Node<>();
         newNode.key = value;
         while (true) {
@@ -32,6 +43,10 @@ public class LockFreeSetImpl<T extends Comparable<T>> implements LockFreeSet<T> 
 
     @Override
     public boolean remove(T value) {
+        if (value == null) {
+            return containsNull.compareAndSet(true, false);
+        }
+
         Neighbours<T> neighbours;
         Node<T> rightNext;
         while (true) {
@@ -63,12 +78,19 @@ public class LockFreeSetImpl<T extends Comparable<T>> implements LockFreeSet<T> 
 
     @Override
     public boolean contains(T value) {
+        if (value == null) {
+            return containsNull.get();
+        }
+
         NeighboursCandidates<T> neighborCandidates = findNeighboursCandidates(new KeyHolder<>(value));
         return neighborCandidates.right != tail && neighborCandidates.right.key.compareTo(value) == 0;
     }
 
     @Override
     public boolean isEmpty() {
+        if (containsNull.get()) {
+            return false;
+        }
         Neighbours<T> neighbours = searchNeighbours(null);
         return neighbours.left == head && neighbours.right == tail;
     }
@@ -117,9 +139,12 @@ public class LockFreeSetImpl<T extends Comparable<T>> implements LockFreeSet<T> 
         return result;
     }
 
-
+    
     private static class Node<T> {
+
         T key;
+
+
         AtomicMarkableReference<Node<T>> nextRef;
 
         boolean isDeleted() {
@@ -128,7 +153,9 @@ public class LockFreeSetImpl<T extends Comparable<T>> implements LockFreeSet<T> 
     }
 
     private static class Neighbours<T> {
+
         final Node<T> left;
+
         final Node<T> right;
 
         Neighbours(Node<T> left, Node<T> right) {
@@ -144,6 +171,7 @@ public class LockFreeSetImpl<T extends Comparable<T>> implements LockFreeSet<T> 
     }
 
     private static class KeyHolder<T> {
+
         T key;
 
         KeyHolder(T key) {

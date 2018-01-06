@@ -19,4 +19,17 @@ public class MainTest {
         assertTrue(set.isEmpty());
         assertFalse(set.contains(1));
     }
+
+    @Test
+    public void testNulls() {
+        LockFreeSet<Integer> set = new LockFreeSetImpl<>();
+        assertTrue(set.add(null));
+        assertFalse(set.add(null));
+        assertFalse(set.isEmpty());
+        assertTrue(set.contains(null));
+        assertTrue(set.remove(null));
+        assertFalse(set.remove(null));
+        assertFalse(set.contains(null));
+        assertTrue(set.isEmpty());
+    }
 }
